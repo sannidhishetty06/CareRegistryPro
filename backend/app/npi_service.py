@@ -53,12 +53,11 @@ def call_npi_api(row):
 
    
 
-    max_retries = 2
-    retry_delay = 1  
+    max_retries = 3
 
     for attempt in range(max_retries + 1):
         try:
-            response = session.get(base_url, params=params, timeout=10)
+            response = session.get(base_url, params=params, timeout=(3, 7))
 
             if response.status_code != 200:
                 raise requests.exceptions.RequestException(
@@ -180,7 +179,7 @@ def call_npi_api(row):
 
         except requests.exceptions.RequestException:
             if attempt < max_retries:
-                time.sleep(retry_delay * (attempt + 1))
+                time.sleep(2 ** attempt)
                 continue
             else:
                 return [{
