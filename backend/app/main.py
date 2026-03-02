@@ -36,57 +36,51 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
         rows = read_excel_file(input_path)
         results = []
 
-        
-
-        batch_size = 5000
-        cooldown_seconds = 300   
-
-        for i in range(0, len(rows), batch_size):
-            batch = rows[i:i + batch_size]
-
-            with ThreadPoolExecutor(max_workers=12) as executor:
-                for data in executor.map(call_npi_api, batch):
+        # ---- PROCESSING ----
+        if len(rows) <= 10:
+            for row in rows:
+                results.extend(call_npi_api(row))
+        else:
+            workers = min(4, len(rows))
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                for data in executor.map(call_npi_api, rows):
                     results.extend(data)
 
-            # Cooldown if not last batch
-            if i + batch_size < len(rows):
-                print("Cooling down before next batch...")
-                time.sleep(cooldown_seconds)
-
-        # Write Excel file
+        # ---- WRITE EXCEL ----
         write_to_excel(results, output_path)
 
         total_processed = len(results)
-        total_failed = sum(1 for r in results if r.get("Status") == "Failed") 
+        total_failed = sum(1 for r in results if r.get("Status") == "Failed")
 
-        # INSERT INTO outputs table
-        output_record = Output(
-        task_id=task.id,
-        stored_path=output_path,
-        total_processed=total_processed,
-        total_failed=total_failed
-    )
-
-        db.add(output_record)
-        db.commit()
-
-
-        # Update DB (IMPORTANT: convert to UUID)
+        # ---- FETCH TASK ----
         task = db.query(Task).filter(Task.id == UUID(task_id)).first()
 
         if task:
+            # Insert output record
+            output_record = Output(
+                task_id=task.id,
+                stored_path=output_path,
+                total_processed=total_processed,
+                total_failed=total_failed
+            )
+            db.add(output_record)
+
+            # Update task
             task.status = "completed"
             task.output_file = output_path
             task.completed_at = datetime.now(timezone.utc)
+
             db.commit()
+
+    except Exception as e:
+        print("Background error:", e)
 
     finally:
         db.close()
 
-
-# ---------------------------
-# Upload Endpoint
-# ---------------------------
+    # ---------------------------
+    # Upload Endpoint
+    # ---------------------------
 @app.post("/upload")
 async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
 
@@ -95,7 +89,6 @@ async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File
 
     original_name = os.path.splitext(file.filename)[0]
     short_id = uuid.uuid4().hex[:6]
-
     unique_name = f"{original_name}_{short_id}.xlsx"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
