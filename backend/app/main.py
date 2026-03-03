@@ -15,6 +15,7 @@ from app.excel_service import write_to_excel
 from app.utils.file_reader import read_excel_file
 
 import time
+import threading
 
 app = FastAPI()
 
@@ -26,7 +27,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 # ======================================================
-# BACKGROUND PROCESSOR (MOVED OUTSIDE UPLOAD FUNCTION)
+# BACKGROUND PROCESSOR 
 # ======================================================
 
 def process_file_background(task_id: str, input_path: str, output_path: str):
@@ -36,14 +37,32 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
         rows = read_excel_file(input_path)
         results = []
 
-        # ---- PROCESSING ----
-        if len(rows) <= 10:
+        # ---- SMALL GLOBAL DELAY CONFIG ----
+        DELAY_SECONDS = 0.15  # 150ms between API calls (~6–7 per sec)
+
+        lock = threading.Lock()
+        last_call_time = [0]
+
+         # ---- PROCESSING ----
+        if len(rows) <= 100:
             for row in rows:
                 results.extend(call_npi_api(row))
         else:
             workers = min(4, len(rows))
+            def delayed_call(row):
+                with lock:
+                    now = time.time()
+                    elapsed = now - last_call_time[0]
+
+                    if elapsed < DELAY_SECONDS:
+                        time.sleep(DELAY_SECONDS - elapsed)
+
+                    last_call_time[0] = time.time()
+
+                return call_npi_api(row)
+
             with ThreadPoolExecutor(max_workers=workers) as executor:
-                for data in executor.map(call_npi_api, rows):
+                for data in executor.map(delayed_call, rows):
                     results.extend(data)
 
         # ---- WRITE EXCEL ----
@@ -78,9 +97,9 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
     finally:
         db.close()
 
-    # ---------------------------
-    # Upload Endpoint
-    # ---------------------------
+# ---------------------------
+# Upload Endpoint
+# ---------------------------
 @app.post("/upload")
 async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
 
