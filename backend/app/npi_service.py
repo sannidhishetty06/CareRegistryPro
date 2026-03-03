@@ -83,7 +83,7 @@ def call_npi_api(row):
 
             output_rows = []
 
-            # -------- SUCCESS (MULTIPLE RESULTS) --------
+            # -------- SUCCESS --------
             for result in data.get("results", []):
 
                 basic = result.get("basic", {})
@@ -123,7 +123,7 @@ def call_npi_api(row):
 
                 secondary_practice = "; ".join(secondary_practice_list)
 
-            # ----- TAXONOMY (PRIMARY ONLY) -----
+                # ----- TAXONOMY -----
                 taxonomy_code = ""
                 specialty = ""
                 license_number = ""
@@ -133,7 +133,7 @@ def call_npi_api(row):
 
                     primary_value = tax.get("primary")
 
-                    # Accept boolean True, string "true", string "Y"
+                    
                     if primary_value is True or \
                     str(primary_value).lower() in ["true", "y"]:
 
