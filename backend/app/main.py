@@ -26,10 +26,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-# ======================================================
 # BACKGROUND PROCESSOR 
-# ======================================================
-
 def process_file_background(task_id: str, input_path: str, output_path: str):
     db = SessionLocal()
 
@@ -37,8 +34,8 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
         rows = read_excel_file(input_path)
         results = []
 
-        # ---- SMALL GLOBAL DELAY CONFIG ----
-        DELAY_SECONDS = 0.15  # 150ms between API calls (~6–7 per sec)
+        # ---- DELAY----
+        DELAY_SECONDS = 0.15 
 
         lock = threading.Lock()
         last_call_time = [0]
@@ -97,9 +94,7 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
     finally:
         db.close()
 
-# ---------------------------
 # Upload Endpoint
-# ---------------------------
 @app.post("/upload")
 async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
 
@@ -165,11 +160,7 @@ async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File
     }
 
 
-# ---------------------------
 # Status Endpoint
-# ---------------------------
-
-
 @app.get("/status/{task_id}")
 def check_status(task_id: str):
 
