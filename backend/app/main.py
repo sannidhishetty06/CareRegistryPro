@@ -35,7 +35,7 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
         results = []
 
         # ---- DELAY----
-        DELAY_SECONDS = 0.15 
+        DELAY_SECONDS = 1 
 
         lock = threading.Lock()
         last_call_time = [0]
