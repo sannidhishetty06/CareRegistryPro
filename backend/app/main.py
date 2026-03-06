@@ -44,6 +44,7 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
     try:
         rows = read_excel_file(input_path)
         results = []
+        
 
         # ---- DELAY----
         DELAY_SECONDS = 0.15     

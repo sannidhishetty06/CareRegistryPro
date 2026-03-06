@@ -63,28 +63,50 @@ function UploadFile() {
 
   };
 
-      
+  const handleDrop = (e) => {
+    e.preventDefault()
+
+    const droppedFile = e.dataTransfer.files[0]
+
+    if (droppedFile) {
+      setFile(droppedFile)
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
+  
   return (
   <div className="space-y-4">
+      <div
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50"
+      >
 
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-700">
-        Upload Excel File
-      </label>
-
-      <input
-        type="file"
-        accept=".xlsx,.xls"
-        onChange={(e) => setFile(e.target.files[0])}
-        className="w-full border rounded-lg p-2 cursor-pointer"
-      />
-
-      {file && (
-        <p className="text-sm text-gray-500">
-          Selected: {file.name}
+        <p className="text-gray-600">
+          Drag & Drop Excel file here
         </p>
-      )}
-    </div>
+
+        <p className="text-gray-400 text-sm">
+          or select a file
+        </p>
+
+        <input
+          type="file"
+          accept=".xlsx"
+          onChange={(e) => setFile(e.target.files[0])}
+          className="mt-3"
+        />
+
+        {file && (
+          <p className="text-sm text-gray-500 mt-2">
+            Selected: {file.name}
+          </p>
+        )}
+
+      </div>
 
     <button
       onClick={uploadFile}
