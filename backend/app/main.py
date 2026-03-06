@@ -5,6 +5,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from uuid import UUID
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
@@ -18,6 +21,14 @@ import time
 import threading
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 UPLOAD_DIR = "storage/uploads"
 OUTPUT_DIR = "storage/outputs"
@@ -35,7 +46,7 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
         results = []
 
         # ---- DELAY----
-        DELAY_SECONDS = 1 
+        DELAY_SECONDS = 0.15     
 
         lock = threading.Lock()
         last_call_time = [0]
@@ -81,9 +92,11 @@ def process_file_background(task_id: str, input_path: str, output_path: str):
             )
             db.add(output_record)
 
+            filename = os.path.basename(output_path)
+
             # Update task
             task.status = "completed"
-            task.output_file = output_path
+            task.output_file = filename
             task.completed_at = datetime.now(timezone.utc)
 
             db.commit()
@@ -182,3 +195,15 @@ def check_status(task_id: str):
 
     finally:
         db.close()
+
+
+@app.get("/download/{filename}")
+def download_file(filename: str):
+
+    file_path = os.path.join(OUTPUT_DIR, filename)
+
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
