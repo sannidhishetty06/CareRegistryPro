@@ -48,7 +48,7 @@ function UploadFile() {
         if (taskStatus === "completed") {
 
           setDownloadUrl(response.data.output_file);
-
+          setFile(null)
           clearInterval(interval);
 
         }
