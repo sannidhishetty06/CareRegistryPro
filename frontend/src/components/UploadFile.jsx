@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { API } from "../api";
 
 function UploadFile() {
@@ -8,6 +8,8 @@ function UploadFile() {
   const [status, setStatus] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
   const [dragging, setDragging] = useState(false);
+
+  const fileInputRef = useRef(null);
 
   const uploadFile = async () => {
 
@@ -72,6 +74,13 @@ const handleDrop = (e) => {
 
   if (droppedFile) {
     setFile(droppedFile);
+
+    // Sync dropped file with the file input
+    if (fileInputRef.current) {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(droppedFile);
+      fileInputRef.current.files = dataTransfer.files;
+    }
   }
 };
 
@@ -82,6 +91,14 @@ const handleDragOver = (e) => {
 
 const handleDragLeave = () => {
   setDragging(false);
+};
+
+const removeFile = () => {
+  setFile(null);
+
+  if (fileInputRef.current) {
+    fileInputRef.current.value = "";
+  }
 };
   
   return (
@@ -103,6 +120,7 @@ const handleDragLeave = () => {
         </p>
 
         <input
+          ref={fileInputRef}
           type="file"
           accept=".xlsx"
           onChange={(e) => setFile(e.target.files[0])}
@@ -110,10 +128,26 @@ const handleDragLeave = () => {
         />
 
         {file && (
-          <p className="text-sm text-gray-500 mt-2">
-            Selected: {file.name}
-          </p>
+          <div className="flex items-center justify-center gap-4 mt-3">
+
+            <span className="font-medium">
+              {file.name}
+            </span>
+
+            <span className="font-medium"></span>{" "}
+             {(file.size / 1024).toFixed(1)} KB
+
+            <button
+              onClick={removeFile}
+              className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
+            >
+              Remove File
+            </button>
+
+          </div>
         )}
+
+        
 
       </div>
 
