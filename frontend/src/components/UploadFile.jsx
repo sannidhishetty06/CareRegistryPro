@@ -11,6 +11,7 @@ function UploadFile() {
 
   const fileInputRef = useRef(null);
   const [uploadMessage, setUploadMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const uploadFile = async () => {
 
@@ -76,15 +77,18 @@ const handleDrop = (e) => {
 
   const droppedFile = e.dataTransfer.files[0];
 
-  if (droppedFile) {
-    setFile(droppedFile);
+  if (droppedFile && !droppedFile.name.endsWith(".xlsx")) {
+    setErrorMessage("❌ Only Excel (.xlsx) files are allowed");
+    return;
+  }
 
-    // Sync dropped file with the file input
-    if (fileInputRef.current) {
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(droppedFile);
-      fileInputRef.current.files = dataTransfer.files;
-    }
+  setErrorMessage("");
+  setFile(droppedFile);
+
+  if (fileInputRef.current) {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(droppedFile);
+    fileInputRef.current.files = dataTransfer.files;
   }
 };
 
@@ -105,6 +109,18 @@ const removeFile = () => {
   }
 };
   
+
+const resetForm = () => {
+  setFile(null);
+  setStatus("");
+  setDownloadUrl("");
+  setTaskId("");
+
+  if (fileInputRef.current) {
+    fileInputRef.current.value = "";
+  }
+};
+
   return (
   <div className="space-y-4">
       <div
@@ -127,7 +143,18 @@ const removeFile = () => {
           ref={fileInputRef}
           type="file"
           accept=".xlsx"
-          onChange={(e) => setFile(e.target.files[0])}
+          onChange={(e) => {
+            const selectedFile = e.target.files[0];
+
+            if (selectedFile && !selectedFile.name.endsWith(".xlsx")) {
+              setErrorMessage("❌ Only Excel (.xlsx) files are allowed");
+              setFile(null);
+              return;
+            }
+
+            setErrorMessage("");
+            setFile(selectedFile);
+          }}
           className="mt-3"
         />
 
@@ -141,13 +168,6 @@ const removeFile = () => {
             <span className="font-medium"></span>{" "}
              {(file.size / 1024).toFixed(1)} KB
 
-            <button
-              onClick={removeFile}
-              className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
-            >
-              Remove File
-            </button>
-
           </div>
         )}
 
@@ -159,36 +179,73 @@ const removeFile = () => {
       </div>
     )}
 
-    <button
-      onClick={uploadFile}
-      disabled={!file || status === "processing"}
-      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
-    >
-      {status === "processing" ? "Processing..." : "Upload File"}
-    </button>
+    {errorMessage && (
+      <div className="text-red-500 text-sm text-center">
+        {errorMessage}
+      </div>
+    )}
+
+    <div className="flex gap-3">
+
+      <button
+        onClick={uploadFile}
+        disabled={!file || status === "processing"}
+        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+      >
+        {status === "processing" ? "Processing..." : "Upload File"}
+      </button>
+
+      <button
+        onClick={removeFile}
+        disabled={!file || status === "processing"}
+        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300"
+      >
+        Remove
+      </button>
+
+    </div>
 
     {status === "processing" && (
-      <div className="text-center text-yellow-600 font-medium">
-        Processing file... please wait
+      <div className="text-center space-y-3">
+
+        <div className="flex justify-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        <div className="text-yellow-600 font-medium">
+          Validating NPIs... please wait
+        </div>
+
       </div>
     )}
 
     {status === "completed" && (
-      <div className="text-center space-y-3">
+  <div className="text-center space-y-3">
 
-        <div className="text-green-600 font-semibold">
-          ✔ Processing Completed
-        </div>
+    <div className="text-green-600 font-semibold">
+      ✔ Processing Completed
+    </div>
 
-        <a
-          href={`http://127.0.0.1:8000/download/${downloadUrl}`}
-          className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-        >
-          Download Output File
-        </a>
+    <div className="flex justify-center gap-3">
 
-      </div>
-    )}
+      <a
+        href={`http://127.0.0.1:8000/download/${downloadUrl}`}
+        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+      >
+        Download
+      </a>
+
+      <button
+        onClick={resetForm}
+        className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+      >
+        Reset
+      </button>
+
+    </div>
+
+  </div>
+)}
 
   </div>
 );
