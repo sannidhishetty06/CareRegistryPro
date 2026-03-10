@@ -10,6 +10,7 @@ function UploadFile() {
   const [dragging, setDragging] = useState(false);
 
   const fileInputRef = useRef(null);
+  const [uploadMessage, setUploadMessage] = useState("");
 
   const uploadFile = async () => {
 
@@ -24,6 +25,7 @@ function UploadFile() {
 
       setTaskId(id);
       setStatus("processing");
+      setUploadMessage("✔ File uploaded successfully!");
 
       startStatusPolling(id);
 
@@ -51,7 +53,9 @@ function UploadFile() {
         if (taskStatus === "completed") {
 
           setDownloadUrl(response.data.output_file);
-          setFile(null)
+          setFile(null);
+          setUploadMessage("");   // clear upload message
+
           clearInterval(interval);
 
         }
@@ -147,9 +151,13 @@ const removeFile = () => {
           </div>
         )}
 
-        
-
       </div>
+
+    {uploadMessage && (
+      <div className="text-green-600 text-sm font-medium text-center">
+        {uploadMessage}
+      </div>
+    )}
 
     <button
       onClick={uploadFile}
