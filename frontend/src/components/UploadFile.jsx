@@ -7,6 +7,7 @@ function UploadFile() {
   const [taskId, setTaskId] = useState("");
   const [status, setStatus] = useState("");
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [dragging, setDragging] = useState(false);
 
   const uploadFile = async () => {
 
@@ -63,31 +64,39 @@ function UploadFile() {
 
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault()
+const handleDrop = (e) => {
+  e.preventDefault();
+  setDragging(false);
 
-    const droppedFile = e.dataTransfer.files[0]
+  const droppedFile = e.dataTransfer.files[0];
 
-    if (droppedFile) {
-      setFile(droppedFile)
-    }
+  if (droppedFile) {
+    setFile(droppedFile);
   }
+};
 
-  const handleDragOver = (e) => {
-    e.preventDefault()
-  }
+const handleDragOver = (e) => {
+  e.preventDefault();
+  setDragging(true);
+};
+
+const handleDragLeave = () => {
+  setDragging(false);
+};
   
   return (
   <div className="space-y-4">
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-gray-50"
+        onDragLeave={handleDragLeave}
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition
+        ${dragging ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50"}`}
       >
 
-        <p className="text-gray-600">
-          Drag & Drop Excel file here
-        </p>
+      <p className="text-gray-600">
+        {dragging ? "Drop your Excel file here" : "Drag & Drop Excel file here"}
+      </p>
 
         <p className="text-gray-400 text-sm">
           or select a file
