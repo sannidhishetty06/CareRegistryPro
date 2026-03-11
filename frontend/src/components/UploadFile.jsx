@@ -127,11 +127,12 @@ const resetForm = () => {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition
-        ${dragging ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50"}`}
+        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200
+        ${dragging ? "border-blue-500 bg-blue-50 scale-[1.02]" : "border-gray-300 bg-gray-50 hover:bg-gray-100"}`}
       >
 
       <p className="text-gray-600">
+        <div className="text-4xl mb-2">📤</div>
         {dragging ? "Drop your Excel file here" : "Drag & Drop Excel file here"}
       </p>
 
@@ -159,14 +160,14 @@ const resetForm = () => {
         />
 
         {file && (
-          <div className="flex items-center justify-center gap-4 mt-3">
-
-            <span className="font-medium">
-              {file.name}
+          <div className="mt-3 flex justify-center items-center gap-3">
+            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm hover:scale-105 transition">
+              📄 {file.name}
             </span>
 
-            <span className="font-medium"></span>{" "}
-             {(file.size / 1024).toFixed(1)} KB
+            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm hover:scale-105 transition">
+              📦 {(file.size / 1024).toFixed(1)} KB
+            </span>{" "}
 
           </div>
         )}
@@ -176,6 +177,12 @@ const resetForm = () => {
     {uploadMessage && (
       <div className="text-green-600 text-sm font-medium text-center">
         {uploadMessage}
+      </div>
+    )}
+
+    {taskId && (
+      <div className="text-sm text-gray-500 text-center">
+        Task ID: <span className="font-medium">{taskId}</span>
       </div>
     )}
 
@@ -190,7 +197,7 @@ const resetForm = () => {
       <button
         onClick={uploadFile}
         disabled={!file || status === "processing"}
-        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+        className="flex-1 bg-blue-600 text-white py-2 rounded-lg shadow hover:bg-blue-700 hover:shadow-md transition disabled:bg-gray-400 transition"
       >
         {status === "processing" ? "Processing..." : "Upload File"}
       </button>
@@ -198,7 +205,7 @@ const resetForm = () => {
       <button
         onClick={removeFile}
         disabled={!file || status === "processing"}
-        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300"
+        className="bg-red-500 text-white px-4 py-2 rounded-lg shadow hover:bg-red-600 hover:shadow-md transition disabled:bg-gray-300"
       >
         Remove
       </button>
@@ -206,7 +213,7 @@ const resetForm = () => {
     </div>
 
     {status === "processing" && (
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-3 bg-gray-50 p-4 rounded-lg">
 
         <div className="flex justify-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -230,14 +237,14 @@ const resetForm = () => {
 
       <a
         href={`http://127.0.0.1:8000/download/${downloadUrl}`}
-        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+        className="bg-green-500 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 hover:shadow-md transition"
       >
         Download
       </a>
 
       <button
         onClick={resetForm}
-        className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+        className="bg-gray-500 text-white px-4 py-2 rounded-lg shadow hover:bg-gray-700 hover:shadow-md transition"
       >
         Reset
       </button>
