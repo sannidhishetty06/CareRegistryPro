@@ -10,34 +10,61 @@ from .database import Base
 class Upload(Base):
     __tablename__ = "uploads"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pk = Column(Integer, primary_key=True, autoincrement=True)   # ⭐ internal row identity
+
+    id = Column(UUID(as_uuid=True))   # ⭐ upload batch id (same for file)
+
     original_filename = Column(String, nullable=False)
-    stored_path = Column(String, nullable=False)
-    total_rows = Column(Integer)
+
+    first_name = Column(String)
+    last_name = Column(String)
+    state = Column(String)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    task = relationship("Task", back_populates="upload", uselist=False)
+
+
 
 class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    upload_id = Column(UUID(as_uuid=True), ForeignKey("uploads.id"))
+
     status = Column(String, default="processing")
     input_file = Column(String)
     output_file = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    upload = relationship("Upload", back_populates="task")
-    output = relationship("Output", back_populates="task", uselist=False)
-
+    
 class Output(Base):
     __tablename__ = "outputs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"))
-    stored_path = Column(String)
-    total_processed = Column(Integer)
-    total_failed = Column(Integer)
+    pk = Column(Integer, primary_key=True, autoincrement=True)   # internal row identity
+
+    id = Column(UUID(as_uuid=True))   # ⭐ batch id (same per file)
+
+    output_file = Column(String)
+
+    first_name = Column(String)
+    last_name = Column(String)
+    state = Column(String)
+
+    found_first_name = Column(String)
+    found_last_name = Column(String)
+    found_state = Column(String)
+
+    full_name = Column(String)
+    npi = Column(String)
+
+    mailing_address = Column(String)
+    primary_practice_address = Column(String)
+    secondary_practice_address = Column(String)
+
+    taxonomy = Column(String)
+    specialty = Column(String)
+    license = Column(String)
+
+    status = Column(String)
+    ai_confidence = Column(String)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    task = relationship("Task", back_populates="output")

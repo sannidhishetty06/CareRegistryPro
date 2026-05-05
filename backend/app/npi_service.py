@@ -4,6 +4,7 @@ import time
 session = requests.Session()
 
 def format_address(addr):
+    """Format address from API response into readable string"""
     parts = []
 
     if addr.get("address_1"):
@@ -36,22 +37,33 @@ def format_address(addr):
     return ", ".join(parts)
 
 
-
-
 def call_npi_api(row):
-    first_name = row.get("First_Name")
-    last_name = row.get("Last_Name")
-    state = row.get("State")
+    """
+    Call NPI Registry API with retry logic.
+    Simple: first_name + last_name + state (if provided)
+    """
+    first_name = row.get("First_Name", "").strip()
+    last_name = row.get("Last_Name", "").strip()
+    state = row.get("State", "").strip() if row.get("State") else ""
+
+    if not first_name or not last_name:
+        return [{
+            "First_Name": first_name,
+            "Last_Name": last_name,
+            "State": state,
+            "Status": "Failed",
+            "Error": "Missing first or last name"
+        }]
 
     base_url = "https://npiregistry.cms.hhs.gov/api/"
     params = {
         "first_name": first_name,
         "last_name": last_name,
-        "state": state,
         "version": "2.1"
     }
 
-   
+    if state:
+        params["state"] = state
 
     max_retries = 3
 
@@ -67,23 +79,34 @@ def call_npi_api(row):
             try:
                 data = response.json()
             except ValueError:
-                raise requests.exceptions.RequestException("Invalid JSON")
+                raise requests.exceptions.RequestException("Invalid JSON response")
 
             if "Errors" in data:
-                raise requests.exceptions.RequestException("API Error")
+                raise requests.exceptions.RequestException(f"API Error: {data['Errors']}")
 
-            # -------- NO MATCH --------
+            # NO MATCH
             if data.get("result_count", 0) == 0:
                 return [{
                     "First_Name": first_name,
                     "Last_Name": last_name,
                     "State": state,
+                    "Found_First_Name": "",
+                    "Found_Last_Name": "",
+                    "Found_State": "",
+                    "Full_Name": "",
+                    "NPI": "",
+                    "Mailing_Address": "",
+                    "Primary_Practice_Address": "",
+                    "Secondary_Practice_Address": "",
+                    "Taxonomy": "",
+                    "Specialty": "",
+                    "License": "",
                     "Status": "No Match"
                 }]
 
             output_rows = []
 
-            # -------- SUCCESS --------
+            # SUCCESS - Process all results
             for result in data.get("results", []):
 
                 basic = result.get("basic", {})
@@ -91,53 +114,68 @@ def call_npi_api(row):
                 practice_locations = result.get("practiceLocations", [])
                 taxonomies = result.get("taxonomies", [])
 
-                # ----- FULL NAME -----
+                # FULL NAME
                 full_name = " ".join(filter(None, [
                     basic.get("first_name"),
                     basic.get("middle_name"),
                     basic.get("last_name")
-                ]))
+                ])).strip()
 
-                npi_number = result.get("number")
+                npi_number = result.get("number", "")
 
                 mailing_address = ""
                 primary_practice = ""
                 secondary_practice_list = []
 
-                # ----- ADDRESSES -----
+                # ADDRESSES
                 for addr in addresses:
-                    purpose = addr.get("address_purpose")
-
+                    purpose = addr.get("address_purpose", "")
                     formatted_address = format_address(addr)
 
                     if purpose == "MAILING":
                         mailing_address = formatted_address
-
                     elif purpose == "LOCATION":
                         primary_practice = formatted_address
 
-                # ----- PRACTICE LOCATIONS (SECONDARY) -----
+                # PRACTICE LOCATIONS (SECONDARY)
                 for pl in practice_locations:
                     formatted_secondary = format_address(pl)
-                    secondary_practice_list.append(formatted_secondary)
+                    if formatted_secondary:
+                        secondary_practice_list.append(formatted_secondary)
 
                 secondary_practice = "; ".join(secondary_practice_list)
 
-                # ----- TAXONOMY -----
+                # STATE EXTRACTION
+                found_state = ""
+
+                # 1. Use LOCATION address
+                for addr in addresses:
+                    if addr.get("address_purpose") == "LOCATION" and addr.get("state"):
+                        found_state = addr.get("state").upper()
+                        break
+
+                # 2. Fallback to MAILING
+                if not found_state:
+                    for addr in addresses:
+                        if addr.get("address_purpose") == "MAILING" and addr.get("state"):
+                            found_state = addr.get("state").upper()
+                            break
+
+                # 3. Fallback to input state
+                if not found_state:
+                    found_state = state if state else "Unknown"
+
+                # TAXONOMY
                 taxonomy_code = ""
                 specialty = ""
                 license_number = ""
-                found_state = ""
 
                 for tax in taxonomies:
-
                     primary_value = tax.get("primary")
 
-                    
-                    if primary_value is True or \
-                    str(primary_value).lower() in ["true", "y"]:
+                    if primary_value is True or str(primary_value).lower() in ["true", "y", "yes", "1"]:
 
-                        state_value = tax.get("state") or ""
+                        state_value = (tax.get("state") or "").upper()
                         code_value = tax.get("code") or ""
                         desc_value = tax.get("desc") or ""
                         license_value = tax.get("license") or ""
@@ -149,20 +187,18 @@ def call_npi_api(row):
 
                         if state_value and license_value:
                             license_number = f"{state_value}-{license_value}"
-                        else:
+                        elif license_value:
                             license_number = license_value
 
                         specialty = desc_value
-                        found_state = state_value or state
-
                         break
 
                 output_rows.append({
                     "First_Name": first_name,
                     "Last_Name": last_name,
                     "State": state,
-                    "Found_First_Name": basic.get("first_name"),
-                    "Found_Last_Name": basic.get("last_name"),
+                    "Found_First_Name": basic.get("first_name", ""),
+                    "Found_Last_Name": basic.get("last_name", ""),
                     "Found_State": found_state,
                     "Full_Name": full_name,
                     "NPI": npi_number,
@@ -177,7 +213,7 @@ def call_npi_api(row):
 
             return output_rows
 
-        except requests.exceptions.RequestException:
+        except requests.exceptions.Timeout:
             if attempt < max_retries:
                 time.sleep(2 ** attempt)
                 continue
@@ -186,5 +222,36 @@ def call_npi_api(row):
                     "First_Name": first_name,
                     "Last_Name": last_name,
                     "State": state,
-                    "Status": "Failed"
+                    "Status": "Failed",
+                    "Error": "Request timeout after retries"
                 }]
+
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries:
+                time.sleep(2 ** attempt)
+                continue
+            else:
+                return [{
+                    "First_Name": first_name,
+                    "Last_Name": last_name,
+                    "State": state,
+                    "Status": "Failed",
+                    "Error": str(e)
+                }]
+
+        except Exception as e:
+            return [{
+                "First_Name": first_name,
+                "Last_Name": last_name,
+                "State": state,
+                "Status": "Failed",
+                "Error": str(e)
+            }]
+
+    return [{
+        "First_Name": first_name,
+        "Last_Name": last_name,
+        "State": state,
+        "Status": "Failed",
+        "Error": "Unexpected error"
+    }]

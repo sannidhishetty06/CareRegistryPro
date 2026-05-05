@@ -27,6 +27,7 @@ def write_to_excel(data, output_path):
         "Specialty",
         "License",
         "Status",
+        "AI_Confidence",
     ]
 
     # Convert to DataFrame
